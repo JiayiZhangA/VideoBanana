@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VideoBanana: Agentic Multi-Turn Conversational Video Editing</title>
+<meta name="description" content="VideoBanana is an agent for multi-turn, conversational video editing, evaluated on ChatVE-Bench.">
+<meta property="og:title" content="VideoBanana: Agentic Multi-Turn Conversational Video Editing">
+<meta property="og:image" content="https://jiayizhanga.github.io/VideoBanana/static/images/teaser.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink: #1f1f1e; --muted: #5f5e58; --line: #e4e3dc; --soft: #f6f6f3; --blue: #5f91eb; --blue-ink: #3b6fd1; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: #fff; color: var(--ink);
+         font-family: "Noto Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+         font-size: 17px; line-height: 1.6; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+  .wide { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+  header.wrap { text-align: center; padding: 52px 20px 20px; max-width: 1120px; }
+  h1 { font-size: clamp(28px, 4vw, 42px); line-height: 1.15; margin: 0 0 16px; letter-spacing: -0.01em; }
+  h1 .name { white-space: nowrap; }  /* per-letter rainbow, same colors as the arXiv title */
+  .authors { font-size: 19px; margin-bottom: 4px; }
+  .au { white-space: nowrap; }
+  .au sup, .af sup { font-size: 0.65em; margin-left: 1px; }
+  .affils { color: var(--muted); font-size: 16px; }
+  .affils div { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 18px; }
+  .buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 22px 0 4px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 999px;
+          background: #1f1f1e; color: #fff; text-decoration: none; font-weight: 600; font-size: 16px; }
+  .btn svg { width: 18px; height: 18px; }
+  .btn:hover { background: #3a3a38; }
+  section.block { padding: 30px 0; }
+  section.block + section.block { border-top: 1px solid var(--line); }
+  h2 { font-size: 27px; margin: 0 0 12px; text-align: center; }
+  p { margin: 0 0 12px; }
+  .lead { color: var(--muted); text-align: center; max-width: 800px; margin: 0 auto 18px; }
+  figure { margin: 0; }
+  figure img { width: 100%; height: auto; display: block; }
+  figcaption { color: var(--muted); font-size: 15px; line-height: 1.5; margin-top: 8px; }
+  .abstract p { text-align: justify; hyphens: auto; text-wrap: pretty; }
+  /* Noto Sans at 17px: every .wrap width from 930 to 960 px ends both paragraphs on a line at least 62% full; 950 is the middle */
+  .abstract .wrap { max-width: 950px; }
+  pre { background: var(--soft); border-radius: 10px; padding: 16px 18px; overflow-x: auto; font-size: 14px; line-height: 1.5; }
+  footer { color: #9a998f; font-size: 14px; text-align: center; padding: 26px 0 40px; border-top: 1px solid var(--line); }
+
+  /* benchmark: number cards, band, actions, one row per example, comparison table */
+  h3 { font-size: 21px; text-align: center; margin: 34px 0 14px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 6px 0 14px; }
+  .stats div { background: var(--soft); border-radius: 10px; padding: 12px 8px 10px; text-align: center; }
+  .stats b { display: block; font-size: 32px; line-height: 1.15; color: var(--blue-ink); font-variant-numeric: tabular-nums; }
+  .stats span { color: var(--muted); font-size: 15px; }
+  .band { width: 100%; height: auto; display: block; border-radius: 8px; }
+  .acts { display: grid; grid-template-columns: repeat(4, auto); justify-content: space-around; gap: 16px; margin: 14px 0 4px;
+          font-size: 15px; line-height: 1.45;
+          text-align: center; }
+  .acts .chip { display: table; margin: 0 auto 4px; border-radius: 999px; padding: 0 10px; color: #fff; font-size: 14px;
+          font-weight: 600; }
+  /* Line breaks at commas and sentence ends (user, 2026-11-25: break by meaning, not by even length);
+     desktop only, phones wrap freely. */
+  /* .u: a phrase that wraps as a unit, so narrow screens break between phrases too. */
+  .u { display: inline-block; }
+  @media (max-width: 760px) { br.d { display: none; } }
+  .types { color: var(--muted); font-size: 15px; text-align: center; margin: 8px 0 0; }
+  .ex-row { display: grid; grid-template-columns: 1fr 1fr 1.25fr; gap: 10px; align-items: start; background: #f4f4f2;
+          border-radius: 8px; padding: 10px; margin-bottom: 12px; }
+  .ex-row video { width: 100%; height: auto; display: block; border-radius: 4px; background: #e9e8e3; }
+  .ex-row .reqs { margin: 0; font-size: 14.5px; line-height: 1.55; text-wrap: pretty; }
+  .ex-row .pill, .chain .pill { color: #fff; font-weight: 700; font-size: 11px; border-radius: 999px; padding: 1px 6px; }
+  .ex-row .pill { margin-right: 4px; }
+  .ex-row .pill:not(:first-child) { margin-left: 4px; }
+  .cmp-scroll { overflow-x: auto; }
+  .cmp { border-collapse: collapse; margin: 0 auto; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .cmp th, .cmp td { padding: 6px 12px; text-align: center; }
+  .cmp thead th { font-weight: 600; font-size: 14px; line-height: 1.25; vertical-align: bottom; }
+  .cmp thead tr:first-child { border-top: 2px solid var(--ink); }
+  .cmp thead tr:last-child { border-bottom: 1px solid var(--ink); }
+  .cmp thead tr:first-child th[colspan] { border-bottom: 1px solid var(--line); }
+  .cmp tbody tr:last-child { border-bottom: 2px solid var(--ink); }
+  .cmp .l { text-align: left; }
+  .cmp tr.ours { background: #eef3fd; font-weight: 700; border-top: 1px solid var(--line); }
+  /* results table: the paper's bold only; gray source row; block label rows */
+  .cmp.res tr.ours { font-weight: 400; border-top: 0; }
+  .cmp.res tr.blk td { padding-top: 8px; padding-bottom: 2px; }
+  .cmp.res tr.blk.ours td { font-weight: 600; }
+  .cmp.res tr.src td { color: #9a998f; }
+  .cmp.res { width: 100%; font-size: 14.5px; }
+  .cmp.res th, .cmp.res td { padding: 5px 8px; }
+  .cmp.res tr.rule td { padding: 0; border-top: 1px solid var(--ink); }
+  .cmp.res thead tr:first-child th:not(:empty) { border-bottom: 1px solid var(--line); }
+  #results figure.turns { margin-top: 30px; }
+  .cmp .yes { color: var(--blue-ink); font-weight: 700; font-size: 19px; line-height: 1; }
+  .cmp .no { color: #b7b6ae; font-size: 17px; line-height: 1; }
+  #benchmark figcaption { text-align: center; }
+  #benchmark .lead .m { display: none; }
+
+  /* method: four step cards in the module colors of the figure */
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+  .steps div { border-top: 4px solid var(--c); background: color-mix(in srgb, var(--c) 9%, white); border-radius: 8px;
+          padding: 10px 12px 12px; font-size: 15px; line-height: 1.45; text-wrap: pretty; }
+  .steps b { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 16px; color: var(--ink); }
+  .steps i { font-style: normal; background: var(--c); color: #fff; width: 22px; height: 22px; border-radius: 50%;
+          display: inline-flex; align-items: center; justify-content: center; font-size: 13px; }
+  /* Line breaks (user, 2026-11-25, as on other project pages): short text (one or two sentences) is broken by
+     hand at commas and sentence ends; long captions wrap on their own, left-aligned, as wide as their figure;
+     Figure 1's caption breaks only before Left: and Right:. */
+  figcaption.long { text-align: left; margin: 10px 0 0; text-wrap: pretty; }
+
+  /* Figure 1 in HTML: the session chain (left) and the radar (right) */
+  .teaser-wrap, .results-wide { max-width: 1360px; margin: 0 auto; padding: 0 20px; }
+  .teaser { display: flex; gap: 22px; align-items: center; }
+  .chain-scroll { flex: 1 1 auto; min-width: 0; }
+  .chain { display: grid; grid-template-columns: 0.82fr repeat(5, 1fr); gap: 6px; align-items: center; }
+  .chain .hd { text-align: center; font-weight: 700; font-size: 15px; }
+  .chain img { width: 100%; height: auto; display: block; border-radius: 3px; }
+  .chain .pr { align-self: stretch; position: relative; border: 1px solid; border-radius: 7px;
+          padding: 14px 8px 7px; font-size: 13px; line-height: 1.35; display: flex; align-items: center; margin-top: 8px; }
+  .chain .pr p { margin: 0; }
+  .chain .pr .tag { position: absolute; top: -9px; left: 50%; transform: translateX(-50%); color: #fff; font-weight: 700;
+          font-size: 11.5px; line-height: 17px; padding: 0 8px; border-radius: 999px; border: 1.5px solid #fff; white-space: nowrap; }
+  .chain .pr.merged { background: #f6f6f4; border-color: #d4d3cd; padding: 7px 8px; }
+  .chain .merged ul { list-style: none; margin: 0; padding: 0; }
+  .chain .merged li { display: flex; gap: 6px; align-items: baseline; margin: 3px 0; }
+  .chain .pill { color: #fff; font-weight: 700; font-size: 11px; border-radius: 999px; padding: 0 6px; flex: none; }
+  .chain .nm { text-align: center; font-size: 14px; line-height: 1.25; }
+  .chain .nm.ours { color: var(--blue-ink); font-weight: 700; }
+  .chain .nm i { display: block; width: 44px; height: 3px; margin: 6px auto 0; }
+  .teaser .radar { flex: 0 0 23%; width: 23%; height: auto; }
+
+  /* the kitchen session: source and every turn, two rows of four */
+  #examples .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px 14px; }
+  #examples video { width: 100%; height: auto; display: block; border-radius: 6px; background: #f4f4f2; }
+  #examples .cap { display: flex; align-items: center; gap: 8px; margin: 7px 0 3px; }
+  #examples .tk { color: #fff; font-weight: 700; font-size: 13px; border-radius: 999px; padding: 0 9px; }
+  #examples .tk.src { background: var(--muted); }
+  #examples .op { font-weight: 700; font-size: 14px; }
+  #examples .req { font-size: 14.5px; line-height: 1.4; color: var(--ink); }
+  #examples .req b { font-weight: 600; }
+  #examples .note { font-size: 13.5px; color: var(--muted); font-style: italic; margin-top: 3px; }
+
+  @media (max-width: 760px) {
+    body { font-size: 16px; }
+    .wrap, .wide { padding: 0 16px; }
+    header.wrap { padding: 32px 16px 16px; }
+    .abstract p { text-align: left; }
+    .band { display: none; }
+    .stats { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .steps { grid-template-columns: 1fr; gap: 8px; }
+    .stats b { font-size: 26px; }
+    .acts { grid-template-columns: 1fr; gap: 8px; font-size: 14px; }
+    .ex-row { grid-template-columns: 1fr 1fr; padding: 8px; }
+    .ex-row .reqs { grid-column: 1 / -1; font-size: 14px; }
+    #benchmark .lead .d { display: none; }
+    #benchmark .lead .m { display: inline; }
+    .cmp { font-size: 13px; }
+    .cmp th, .cmp td { padding: 5px 7px; }
+    #examples .grid { grid-template-columns: repeat(2, 1fr); gap: 14px 10px; }
+    .teaser-wrap, .results-wide { padding: 0 16px; }
+    .teaser { flex-direction: column; }
+    .chain-scroll { width: 100%; overflow-x: auto; padding-bottom: 6px; }
+    .chain { min-width: 760px; }
+    .teaser .radar { width: 62%; max-width: 300px; flex: none; }
+    #examples .req { font-size: 13.5px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="wrap">
+  <h1><span class="name" aria-label="VideoBanana"><span style="color:#E53935">V</span><span style="color:#F4511E">i</span><span style="color:#FB8C00">d</span><span style="color:#F2A900">e</span><span style="color:#7CB342">o</span><span style="color:#43A047">B</span><span style="color:#00897B">a</span><span style="color:#039BE5">n</span><span style="color:#1E88E5">a</span><span style="color:#5E35B1">n</span><span style="color:#8E24AA">a</span></span>: Agentic Multi-Turn<br>Conversational Video Editing</h1>
+  <div class="authors">
+<span class="au">Jiayi Zhang<sup>1</sup></span>,
+<span class="au">Xiangbo Gao<sup>2</sup></span>,
+<span class="au">Vardhan Dongre<sup>3</sup></span>,
+<span class="au">Franck Dernoncourt<sup>4</sup></span>,
+<span class="au">Ryan A. Rossi<sup>5</sup></span>,
+<span class="au">Zhengzhong Tu<sup>2</sup></span>
+  </div>
+  <div class="affils">
+<div><span class="af"><sup>1</sup>The University of Texas at Austin</span>
+<span class="af"><sup>2</sup>Texas A&amp;M University</span>
+<span class="af"><sup>3</sup>University of Illinois Urbana-Champaign</span></div>
+<div><span class="af"><sup>4</sup>Adobe Research</span>
+<span class="af"><sup>5</sup>Zillow</span></div>
+  </div>
+  <div class="buttons">
+<a class="btn" href=""><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M15 2v5h5M9 13h8M9 17h8" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Paper</span></a>
+<a class="btn" href="https://github.com/taco-group/VideoBanana"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Code</span></a>
+<a class="btn" href="https://huggingface.co/datasets/JiayiZhang14/ChatVE-Bench"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="8" ry="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>ChatVE-Bench</span></a>
+  </div>
+</header>
+
+<section class="block" style="border-top:0;padding-top:12px">
+  <div class="teaser-wrap">
+    <figure>
+      <div class="teaser">
+        <div class="chain-scroll"><div class="chain">
+<div class="hd">Source</div>
+<div class="hd">T1–T4</div>
+<div class="hd">T5</div>
+<div class="hd">T6</div>
+<div class="hd">T7</div>
+<div class="hd">T8</div>
+<div class="fr"><img src="static/images/teaser/source.jpg" alt="Source video" width="640" height="352" loading="eager"></div>
+<div class="pr merged"><ul><li><span class="pill" style="background:#61b6ca">T1</span><span><b>white orchid</b> replaces the plant</span></li><li><span class="pill" style="background:#61b6ca">T2</span><span><b>remove the teapot</b></span></li><li><span class="pill" style="background:#78d4b7">T3</span><span><b>orchid flowers to magenta</b> (revision)</span></li><li><span class="pill" style="background:#61b6ca">T4</span><span><b>woman&#x27;s hoodie to yellow</b></span></li></ul></div>
+<div class="pr" style="background:#dff0f4;border-color:#b8dee7"><span class="tag" style="background:#61b6ca">follow-up</span><p>Render the <b>yellow tiled kitchen background in a cyberpunk style</b> with glowing neon blue and magenta lights.</p></div>
+<div class="pr" style="background:#dff0f4;border-color:#b8dee7"><span class="tag" style="background:#61b6ca">follow-up</span><p>Also, <b>change the man&#x27;s grey hoodie to bright red</b>.</p></div>
+<div class="pr" style="background:#fceddc;border-color:#f7d7b0"><span class="tag" style="background:#eea64f">undo</span><p>Actually, <b>undo changing the woman&#x27;s hoodie to bright yellow</b>.</p></div>
+<div class="pr" style="background:#fae5ee;border-color:#f3c4da"><span class="tag" style="background:#e47cac">redo</span><p>On second thought, <b>bring back the color change on the woman&#x27;s hoodie</b>.</p></div>
+<div class="nm"><span>Kiwi-Edit</span><i style="background:#d2b48c"></i></div>
+<div class="fr"><img src="static/images/teaser/kiwi_T4.jpg" alt="Kiwi-Edit, turn 4" width="640" height="352" loading="eager"></div>
+<div class="fr"><img src="static/images/teaser/kiwi_T5.jpg" alt="Kiwi-Edit, turn 5" width="640" height="352" loading="eager"></div>
+<div class="fr"><img src="static/images/teaser/kiwi_T6.jpg" alt="Kiwi-Edit, turn 6" width="640" height="352" loading="eager"></div>
+<div class="fr"><img src="static/images/teaser/kiwi_T7.jpg" alt="Kiwi-Edit, turn 7" width="640" height="352" loading="eager"></div>
+<div class="fr"><img src="static/images/teaser/kiwi_T8.jpg" alt="Kiwi-Edit, turn 8" width="640" height="352" loading="eager"></div>
+<div class="nm"><span>CoinVE-Edit</span><i style="background:#94bf8a"></i></div>
+<div class="fr"><img src="static/images/teaser/coinve_T4.jpg" alt="CoinVE-Edit, turn 4" width="640" height="352" loading="eager"></div>
+<div class="fr"><img src="static/images/teaser/coinve_T5.jpg" alt="CoinVE-Edit, turn 5" width="640" height="352" loading="eager"></div>
+<div class="fr"><img src="static/images/teaser/coinve_T6.jpg" alt="CoinVE-Edit, turn 6" width="640" height="352" loading="eager"></div>
+<div class="fr"><img src="static/images/teaser/coinve_T7.jpg" alt="CoinVE-Edit, turn 7" width="640" height="352" loading="eager"></div>
+<div class="fr"><img src="static/images/teaser/coinve_T8.jpg" alt="CoinVE-Edit, turn 8" width="640" height="352" loading="eager"></div>
+<div class="nm"><span>MiniMax H3</span><i style="background:#dc8f8c"></i></div>
+<div class="fr"><img src="static/images/teaser/h3_T4.jpg" alt="MiniMax H3, turn 4" width="640" height="352" loading="eager"></div>
+<div class="fr"><img src="static/images/teaser/h3_T5.jpg" alt="MiniMax H3, turn 5" width="640" height="352" loading="eager"></div>
+<div class="fr"><img src="static/images/teaser/h3_T6.jpg" alt="MiniMax H3, turn 6" width="640" height="352" loading="eager"></div>
+<div class="fr"><img src="static/images/teaser/h3_T7.jpg" alt="MiniMax H3, turn 7" width="640" height="352" loading="eager"></div>
+<div class="fr"><img src="static/images/teaser/h3_T8.jpg" alt="MiniMax H3, turn 8" width="640" height="352" loading="eager"></div>
+<div class="nm ours"><span>VideoBanana<br>(ours)</span><i style="background:#5f91eb"></i></div>
+<div class="fr"><img src="static/images/teaser/agent_T4.jpg" alt="VideoBanana (ours), turn 4" width="640" height="352" loading="eager"></div>
+<div class="fr"><img src="static/images/teaser/agent_T5.jpg" alt="VideoBanana (ours), turn 5" width="640" height="352" loading="eager"></div>
+<div class="fr"><img src="static/images/teaser/agent_T6.jpg" alt="VideoBanana (ours), turn 6" width="640" height="352" loading="eager"></div>
+<div class="fr"><img src="static/images/teaser/agent_T7.jpg" alt="VideoBanana (ours), turn 7" width="640" height="352" loading="eager"></div>
+<div class="fr"><img src="static/images/teaser/agent_T8.jpg" alt="VideoBanana (ours), turn 8" width="640" height="352" loading="eager"></div>
+        </div></div>
+        <img class="radar" src="static/images/teaser/radar.png" alt="Editing accuracy by action and edit type, and final-turn preservation and video quality, for the four systems." width="870" height="1459">
+      </div>
+      <figcaption class="long">Multi-turn video editing on ChatVE-Bench. VideoBanana follows the conversation
+      better than turn-by-turn editing baselines.<br>
+      Left: one session. The baselines edit their own outputs. Kiwi-Edit and CoinVE-Edit lose video quality, and no
+      baseline restores the black hoodie when T7 undoes T4. VideoBanana restores it, keeps the later edits, and brings
+      the yellow back at T8.<br>
+      Right: editing accuracy by action and edit type, and final-turn preservation and video quality, over all
+      sessions. VideoBanana is ahead on almost every axis and in the final turn.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="block abstract">
+  <div class="wrap">
+    <h2>Abstract</h2>
+    <p>Video editing is often multi-turn and conversational. Within one session, a user gives instruction after
+    instruction, and each result should reflect all of them so far. Each instruction depends on the conversation
+    history, so it can revise or undo an earlier edit. Instruction-guided video editors, however, are built for a
+    single request on the source video, and existing video editing benchmarks score each request on its own. We
+    therefore introduce <b>ChatVE-Bench</b>, a benchmark of multi-turn, conversational video editing. Its 144
+    sessions of 5 to 8 turns add follow-up edits, revise earlier edits, undo any earlier step, and redo undone
+    edits. Every turn is scored with a checklist built from the expected state of the session. On ChatVE-Bench,
+    editors used turn-by-turn edit their own outputs again and again. After a few generations, their video
+    quality falls, and so does the accuracy of new edits. They can undo only by issuing another edit, which often
+    fails to restore what the undone edit replaced.</p>
+    <p>We then propose <b>VideoBanana</b>, an agent that treats such editing as tracking the goal of the
+    conversation over a tree of verifier-scored checkpoints. At every turn, it restates the full goal as atomic
+    intents and chooses the entry video from any earlier checkpoint, so undo becomes backtracking and every output
+    stays within a few generations of the source. It writes editor instructions for the intents that entry does
+    not yet satisfy, executes them with a single-turn editing agent, and verifies the output against the goal.
+    With the same editor, VideoBanana raises final-turn editing accuracy from 50.6 to 85.3 and
+    content preservation from 60.3 to 76.2 over editing turn by turn. It undoes reliably and
+    largely keeps video quality close to the source at every turn.</p>
+  </div>
+</section>
+
+<section class="block" id="examples">
+  <div class="wide">
+    <h2>Multi-Turn Editing</h2>
+    <p class="lead">One ChatVE-Bench session edited by VideoBanana. Each video is the output after that turn.</p>
+    <div class="grid">
+<div class="cell"><video src="static/videos/mt_0076_vb_source.mp4" muted loop playsinline autoplay preload="auto" width="656" height="336" poster="static/images/posters/mt_0076_vb_source.jpg"></video><div class="cap"><span class="tk src">Source</span></div></div>
+<div class="cell"><video src="static/videos/mt_0076_vb_T1.mp4" muted loop playsinline autoplay preload="auto" width="656" height="336" poster="static/images/posters/mt_0076_vb_T1.jpg"></video><div class="cap"><span class="tk" style="background:#61b6ca">T1</span><span class="op" style="color:#61b6ca">Follow-up</span></div><div class="req">Could you change the <b>woman&#x27;s white shirt to a vibrant red</b> color?</div></div>
+<div class="cell"><video src="static/videos/mt_0076_vb_T2.mp4" muted loop playsinline autoplay preload="auto" width="656" height="336" poster="static/images/posters/mt_0076_vb_T2.jpg"></video><div class="cap"><span class="tk" style="background:#61b6ca">T2</span><span class="op" style="color:#61b6ca">Follow-up</span></div><div class="req">Now <b>replace the black frying pan</b> on the stove with <b>a shiny copper saucepan</b>.</div></div>
+<div class="cell"><video src="static/videos/mt_0076_vb_T3.mp4" muted loop playsinline autoplay preload="auto" width="656" height="336" poster="static/images/posters/mt_0076_vb_T3.jpg"></video><div class="cap"><span class="tk" style="background:#61b6ca">T3</span><span class="op" style="color:#61b6ca">Follow-up</span></div><div class="req">Give the <b>background brick wall and shelves a cyberpunk look</b> with glowing neon pink and cyan lights.</div></div>
+<div class="cell"><video src="static/videos/mt_0076_vb_T4.mp4" muted loop playsinline autoplay preload="auto" width="656" height="336" poster="static/images/posters/mt_0076_vb_T4.jpg"></video><div class="cap"><span class="tk" style="background:#eea64f">T4</span><span class="op" style="color:#eea64f">Undo</span></div><div class="req">Actually, <b>take away the cyberpunk style</b> on the background wall and shelves for now.</div><div class="note">Backtracks to its T2 video.</div></div>
+<div class="cell"><video src="static/videos/mt_0076_vb_T5.mp4" muted loop playsinline autoplay preload="auto" width="656" height="336" poster="static/images/posters/mt_0076_vb_T5.jpg"></video><div class="cap"><span class="tk" style="background:#78d4b7">T5</span><span class="op" style="color:#78d4b7">Revision</span></div><div class="req">Now change the <b>copper saucepan to a bright red enamel finish</b>.</div></div>
+<div class="cell"><video src="static/videos/mt_0076_vb_T6.mp4" muted loop playsinline autoplay preload="auto" width="656" height="336" poster="static/images/posters/mt_0076_vb_T6.jpg"></video><div class="cap"><span class="tk" style="background:#61b6ca">T6</span><span class="op" style="color:#61b6ca">Follow-up</span></div><div class="req">Please <b>remove the red tulips in the glass vase</b> from the countertop.</div></div>
+<div class="cell"><video src="static/videos/mt_0076_vb_T7.mp4" muted loop playsinline autoplay preload="auto" width="656" height="336" poster="static/images/posters/mt_0076_vb_T7.jpg"></video><div class="cap"><span class="tk" style="background:#e47cac">T7</span><span class="op" style="color:#e47cac">Redo</span></div><div class="req">On second thought, <b>bring back the background style change</b> I had you undo earlier.</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="benchmark">
+  <div class="wrap">
+    <h2>ChatVE-Bench</h2>
+    <div class="stats">
+      <div><b>144</b><span>sessions</span></div>
+      <div><b>907</b><span>turns</span></div>
+      <div><b>5&ndash;8</b><span>turns per session</span></div>
+      <div><b>10,903</b><span>checklist questions</span></div>
+    </div>
+    <p class="lead"><span class="u">Every turn is scored with a checklist</span>
+    <span class="u">built from the expected state of the whole session.</span></p>
+  </div>
+  <div class="wide">
+    <img class="band" src="static/images/bench/band.png" alt="ChatVE-Bench: multi-turn and conversational. A request can follow up, revise an earlier edit, undo it, or redo it." width="2475" height="290">
+    <div class="acts">
+      <div><span class="chip" style="background:#61b6ca">Follow-up</span>A new change that refers to no earlier edit.</div>
+      <div><span class="chip" style="background:#78d4b7">Revision</span>Changes what an earlier edit made.</div>
+      <div><span class="chip" style="background:#eea64f">Undo</span>Removes the last or an earlier step.</div>
+      <div><span class="chip" style="background:#e47cac">Redo</span>Brings an undone edit back.</div>
+    </div>
+    <p class="types"><span class="u">Every turn also has one of six edit types:</span>
+    <span class="u">attribute, replacement, addition, removal, local style, and visual effect.</span></p>
+
+    <h3>Examples</h3>
+    <p class="lead"><span class="u">Each row shows the source video (left),</span><br class="d">
+    <span class="u">VideoBanana's output after the final turn (<span class="d">middle</span><span class="m">right</span>),</span><br class="d">
+    <span class="u">and every request of the session (<span class="d">right</span><span class="m">below</span>).</span></p>
+<div class="ex-row"><figure><video src="static/videos/bench_mt_0153_src.mp4" poster="static/images/bench/mt_0153_src.jpg" muted loop playsinline autoplay preload="auto" width="640" height="352"></video></figure><figure><video src="static/videos/bench_mt_0153_final.mp4" poster="static/images/bench/mt_0153_final.jpg" muted loop playsinline autoplay preload="auto" width="640" height="352"></video></figure><p class="reqs"><span class="pill" style="background:#61b6ca">T1</span>Can you render the blonde woman in an anime style with clean cel shading and distinct linework? <span class="pill" style="background:#61b6ca">T2</span>Now, add a gently falling snow effect throughout the background scene. <span class="pill" style="background:#61b6ca">T3</span>Place a red skateboard resting on the ground next to the blonde woman. <span class="pill" style="background:#78d4b7">T4</span>Could you change the wheels on that red skateboard to neon green? <span class="pill" style="background:#78d4b7">T5</span>Actually, instead of the falling snow, add a light drifting fog effect floating around the white lamp posts.</p></div>
+<div class="ex-row"><figure><video src="static/videos/bench_mt_0296_src.mp4" poster="static/images/bench/mt_0296_src.jpg" muted loop playsinline autoplay preload="auto" width="640" height="352"></video></figure><figure><video src="static/videos/bench_mt_0296_final.mp4" poster="static/images/bench/mt_0296_final.jpg" muted loop playsinline autoplay preload="auto" width="640" height="352"></video></figure><p class="reqs"><span class="pill" style="background:#61b6ca">T1</span>Could you add some drifting fog throughout the station interior? <span class="pill" style="background:#61b6ca">T2</span>Next, change the blue wall column on the left side to bright red. <span class="pill" style="background:#61b6ca">T3</span>Please remove the metal handrail running diagonally down the ramp in the foreground. <span class="pill" style="background:#eea64f">T4</span>Actually, undo the color edit on the left wall column. <span class="pill" style="background:#61b6ca">T5</span>Now render the large digital display screen in an oil painting style with thick, visible brushstrokes. <span class="pill" style="background:#e47cac">T6</span>On second thought, bring back the column color change.</p></div>
+<div class="ex-row"><figure><video src="static/videos/bench_mt_0070_src.mp4" poster="static/images/bench/mt_0070_src.jpg" muted loop playsinline autoplay preload="auto" width="640" height="352"></video></figure><figure><video src="static/videos/bench_mt_0070_final.mp4" poster="static/images/bench/mt_0070_final.jpg" muted loop playsinline autoplay preload="auto" width="640" height="352"></video></figure><p class="reqs"><span class="pill" style="background:#61b6ca">T1</span>Can you style the background street scene framed by the gateway in a cyberpunk aesthetic with high contrast and glowing neon lights? <span class="pill" style="background:#61b6ca">T2</span>Great! Now change the woman&#x27;s yellow jacket to bright red. <span class="pill" style="background:#61b6ca">T3</span>Let me also remove the black dumpster on the left side of the scene. <span class="pill" style="background:#eea64f">T4</span>Actually, bring back the black dumpster on the left side. <span class="pill" style="background:#78d4b7">T5</span>On second thought, make the woman&#x27;s jacket electric blue instead of red. <span class="pill" style="background:#e47cac">T6</span>You know what, go ahead and remove that black dumpster on the left again.</p></div>
+
+    <h3>Comparison with Existing Benchmarks</h3>
+    <figure>
+      <div class="cmp-scroll">
+<table class="cmp"><thead><tr><th rowspan="2" class="l">Benchmark</th><th rowspan="2">Sessions</th><th colspan="2">Turns</th><th colspan="2">Checklist questions</th><th rowspan="2">Multi-turn</th><th rowspan="2">Conver&shy;sational</th><th rowspan="2">Undo</th><th rowspan="2">Revision</th><th rowspan="2">State-based</th></tr><tr><th>per session</th><th>total</th><th>per session</th><th>total</th></tr></thead><tbody><tr><td class="l">VEFX-Bench</td><td>300</td><td>1</td><td>300</td><td>&ndash;</td><td>&ndash;</td><td><span class="no">✗</span></td><td><span class="no">✗</span></td><td><span class="no">✗</span></td><td><span class="no">✗</span></td><td><span class="no">✗</span></td></tr>
+<tr><td class="l">CoinVE-Bench</td><td>361</td><td>1</td><td>361</td><td>11.4</td><td>4,131</td><td><span class="no">✗</span></td><td><span class="no">✗</span></td><td><span class="no">✗</span></td><td><span class="no">✗</span></td><td><span class="no">✗</span></td></tr>
+<tr><td class="l">CoVEBench</td><td>626</td><td>1</td><td>626</td><td>16.0</td><td>9,990</td><td><span class="no">✗</span></td><td><span class="no">✗</span></td><td><span class="no">✗</span></td><td><span class="no">✗</span></td><td><span class="no">✗</span></td></tr>
+<tr><td class="l">IVEBench</td><td>600</td><td>1</td><td>600</td><td>&ndash;</td><td>&ndash;</td><td><span class="no">✗</span></td><td><span class="no">✗</span></td><td><span class="no">✗</span></td><td><span class="no">✗</span></td><td><span class="no">✗</span></td></tr>
+<tr class="ours"><td class="l">ChatVE-Bench (ours)</td><td>144</td><td>5&ndash;8</td><td>907</td><td>75.7</td><td>10,903</td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td><td><span class="yes">✓</span></td></tr></tbody></table>
+      </div>
+      <figcaption><span class="u">Comparison with existing video editing benchmarks.</span> <span class="u"><i>Conversational</i>: some requests are conversation-dependent.</span><br class="d">
+      <span class="u"><i>State-based</i>: each turn is scored against the expected state of the whole session.</span><br class="d">
+      <span class="u">Checklist questions are counted at every turn they appear in.</span></figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="block" id="method">
+  <div class="wrap">
+    <h2>Method</h2>
+    <p class="lead"><span class="u">At every turn, VideoBanana runs the four modules shown in (c).</span><br class="d">
+    <span class="u">The figure follows the kitchen session from Multi-Turn Editing above.</span></p>
+  </div>
+  <div class="wide">
+    <!-- Card text is the paper's: 1 from Sec. 4.2, 2 and 3 from the abstract (subject dropped), 4 from Sec. 4.4. -->
+    <div class="steps">
+      <div style="--c:#5f91eb"><b><i>1</i>Intent refiner</b>One LLM call per turn restates the goal from the dialogue.<br>It returns the intents that the turn adds, stops, or brings back, and the complete active list.</div>
+      <div style="--c:#9f7edf"><b><i>2</i>Entry selector</b>Chooses the entry video from any earlier checkpoint, so undo becomes backtracking and every output stays within a few generations of the source.</div>
+      <div style="--c:#9f7edf"><b><i>3</i>Instruction writer</b>Writes editor instructions for the intents that entry does not yet satisfy and executes them with a single-turn editing agent.</div>
+      <div style="--c:#61b6ca"><b><i>4</i>Verifier</b>It scores every active intent, not only those of the current request, and also the preservation of the rest of the video and the visual quality.</div>
+    </div>
+    <figure>
+      <img src="static/images/method.png" alt="Overview of VideoBanana on the seven-turn kitchen session: the conversation, the version tree, and the four steps at turn 5." width="2900" height="1373">
+      <figcaption class="long">Overview of VideoBanana. In (b), T2 and T4 return the same video: when T4 undoes
+      the edit of T3, a checkpoint that shows the goal already exists and is reused. In (c), at T5, the entry selector
+      does not edit the output of T3, because it still shows the cyberpunk background that T4 undid. It starts from a
+      checkpoint without this edit. Among these, it prefers the shallowest output.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="block" id="results">
+  <div class="wrap">
+    <h2>Results</h2>
+  </div>
+  <div class="wide results-wide">
+    <figure>
+      <div class="cmp-scroll">
+<table class="cmp res"><thead><tr><th class="l"></th><th colspan="4">Editing accuracy</th><th>Preservation</th><th colspan="7">Video quality</th></tr><tr><th class="l">Method</th><th>SA</th><th>SPA</th><th>EP</th><th>EA</th><th>CP</th><th>TQ</th><th>&Delta;TQ</th><th>VQR</th><th>&Delta;VQR</th><th>PC</th><th>AES</th><th>MSM</th></tr></thead><tbody><tr class="src"><td class="l">Source clip</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>14.54</td><td>–</td><td>4.08</td><td>–</td><td>0.461</td><td>5.10</td><td>0.756</td></tr>
+<tr class="rule"><td colspan="13"></td></tr>
+<tr class="blk"><td class="l" colspan="13"><i>Final turn</i></td></tr>
+<tr><td class="l">Kiwi-Edit</td><td>43.2</td><td>24.3</td><td>38.3</td><td>35.3</td><td>55.9</td><td>10.57</td><td>−19%</td><td>0.72</td><td>−82%</td><td>0.341</td><td>4.30</td><td>0.731</td></tr>
+<tr><td class="l">CoinVE-Edit</td><td>53.5</td><td>42.2</td><td>56.1</td><td>50.6</td><td>60.3</td><td>11.47</td><td>−16%</td><td>0.98</td><td>−76%</td><td>0.313</td><td>4.42</td><td>0.762</td></tr>
+<tr><td class="l">MiniMax H3</td><td>62.9</td><td>66.5</td><td>61.9</td><td>63.8</td><td>58.4</td><td>12.04</td><td>−11%</td><td>3.09</td><td>−23%</td><td>0.349</td><td>4.31</td><td><b>0.768</b></td></tr>
+<tr class="blk ours"><td class="l" colspan="13">VideoBanana (ours)</td></tr>
+<tr class="ours"><td class="l">&emsp;VLM: Qwen</td><td>83.3</td><td>84.6</td><td><b>84.7</b></td><td>84.2</td><td>75.7</td><td><b>16.72</b></td><td><b>+22%</b></td><td><b>3.99</b></td><td><b>−1%</b></td><td><b>0.400</b></td><td>5.19</td><td>0.761</td></tr>
+<tr class="ours"><td class="l">&emsp;VLM: Gemini</td><td><b>83.8</b></td><td><b>87.7</b></td><td>84.5</td><td><b>85.3</b></td><td><b>76.2</b></td><td>16.67</td><td><b>+22%</b></td><td><b>3.99</b></td><td><b>−1%</b></td><td>0.385</td><td><b>5.21</b></td><td>0.767</td></tr>
+<tr class="rule"><td colspan="13"></td></tr>
+<tr class="blk"><td class="l" colspan="13"><i>All turns</i></td></tr>
+<tr><td class="l">Kiwi-Edit</td><td>49.0</td><td>42.5</td><td>48.4</td><td>46.7</td><td>69.3</td><td>13.21</td><td>−3%</td><td>2.20</td><td>−46%</td><td>0.368</td><td>4.62</td><td>0.745</td></tr>
+<tr><td class="l">CoinVE-Edit</td><td>60.7</td><td>60.2</td><td>64.3</td><td>61.7</td><td>77.2</td><td>14.42</td><td>+5%</td><td>2.70</td><td>−34%</td><td>0.369</td><td>4.77</td><td>0.764</td></tr>
+<tr><td class="l">MiniMax H3</td><td>65.0</td><td>75.8</td><td>64.0</td><td>68.3</td><td>67.7</td><td>13.74</td><td>0%</td><td>3.69</td><td>−9%</td><td>0.381</td><td>4.46</td><td><b>0.775</b></td></tr>
+<tr class="blk ours"><td class="l" colspan="13">VideoBanana (ours)</td></tr>
+<tr class="ours"><td class="l">&emsp;VLM: Qwen</td><td>84.2</td><td>88.1</td><td>86.4</td><td>86.2</td><td>83.1</td><td>16.26</td><td>+17%</td><td>4.05</td><td><b>0%</b></td><td><b>0.416</b></td><td>5.26</td><td>0.764</td></tr>
+<tr class="ours"><td class="l">&emsp;VLM: Gemini</td><td><b>85.0</b></td><td><b>88.4</b></td><td><b>86.7</b></td><td><b>86.7</b></td><td><b>84.2</b></td><td><b>16.37</b></td><td><b>+18%</b></td><td><b>4.06</b></td><td><b>0%</b></td><td>0.405</td><td><b>5.27</b></td><td>0.768</td></tr></tbody></table>
+      </div>
+      <figcaption class="long">Results on ChatVE-Bench. SA, SPA, and EP are semantic accuracy, scope accuracy, and edit
+      persistence. EA is editing accuracy. CP is content preservation. &Delta; is the change from the session's source
+      clip. VLM is the model family of the agent's refiner, writer, and verifier. The video editor is unchanged. Bold: best in each block.</figcaption>
+    </figure>
+    <figure class="turns">
+      <img src="static/images/results_turns.png" alt="Editing accuracy, content preservation, and video quality at each turn." width="2845" height="703">
+      <figcaption class="long">Editing accuracy, content preservation, and video quality across the turns of a
+      session. The baselines decline on all three as their outputs undergo successive generations. VideoBanana keeps
+      its outputs within a few generations of the source and declines far less.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="block">
+  <div class="wrap">
+    <h2>BibTeX</h2>
+<pre>@article{zhang2026videobanana,
+  title   = {VideoBanana: Agentic Multi-Turn Conversational Video Editing},
+  author  = {Zhang, Jiayi and Gao, Xiangbo and Dongre, Vardhan and
+             Dernoncourt, Franck and Rossi, Ryan A. and Tu, Zhengzhong},
+  journal = {arXiv preprint},
+  year    = {2026}
+}</pre>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">VideoBanana project page.</div>
+</footer>
+
+<script>
+
+// The videos of each group share one clock: the group's first video leads, the others follow it.
+document.querySelectorAll('#examples, .ex-row').forEach(function (group) {
+  const vids = Array.from(group.querySelectorAll('video'));
+  if (!vids.length) return;
+  const lead = vids[0];
+  function sync() {
+    vids.forEach(v => {
+      if (v !== lead && v.readyState > 1 && Math.abs(v.currentTime - lead.currentTime) > 0.08) v.currentTime = lead.currentTime;
+    });
+  }
+  lead.addEventListener('seeked', sync);
+  lead.addEventListener('play', sync);
+  setInterval(sync, 500);
+  vids.forEach(v => v.play && v.play().catch(() => {}));
+});
+
+</script>
+</body>
+</html>
